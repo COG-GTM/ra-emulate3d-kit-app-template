@@ -27,7 +27,13 @@ repository = "https://github.com/NVIDIA-Omniverse/kit-app-template"  # URL of th
 "omni.kit.viewport.utility" = {}
 
 [settings]
-
+# Locations a streaming client may open with `openStageRequest`. Anything else is
+# rejected. Entries may use Kit tokens and can be local directories or remote
+# roots such as "omniverse://nucleus.example.com/Projects/Viewer".
+exts."{{ extension_name }}".allowedStageRoots = [
+    "${omni.usd_viewer.samples}/samples_data",
+    "${app}/../samples",
+]
 
 [[python.module]]  # Main python module this extension provides, it will be publicly available as "import omni.hello.world"
 name = "{{ extension_name }}"

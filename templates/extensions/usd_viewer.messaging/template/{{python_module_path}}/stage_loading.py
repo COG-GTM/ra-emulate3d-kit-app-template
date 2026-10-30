@@ -13,6 +13,7 @@ import os
 
 import carb
 import carb.events
+import carb.settings
 import carb.tokens
 from carb.eventdispatcher import get_eventdispatcher
 
@@ -20,6 +21,10 @@ import omni.client
 import omni.kit.app
 import omni.kit.livestream.messaging as messaging
 import omni.usd
+
+from .stage_url_policy import is_stage_url_allowed
+
+ALLOWED_STAGE_ROOTS_SETTING = "/exts/{{ extension_name }}/allowedStageRoots"
 
 
 class LoadingManager:
@@ -155,6 +160,22 @@ class LoadingManager:
         # Check to see if we've already loaded the current stage.
         url = process_url(self._requested_stage_url)
 
+        # Only open stages from configured trusted locations. Stages can carry
+        # executable content, so a client must not be able to pick an arbitrary file.
+        if url and not is_stage_url_allowed(url, self._allowed_stage_roots()):
+            carb.log_warn(
+                f"Rejected request to open '{self._requested_stage_url}': "
+                f"location is not listed in {ALLOWED_STAGE_ROOTS_SETTING}"
+            )
+            payload = {
+                "url": self._requested_stage_url,
+                "result": "error",
+                "error": "The requested stage location is not allowed.",
+            }
+            get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
+            self._reset_state()
+            return
+
         stage = omni.usd.get_context().get_stage()
         current_stage = stage.GetRootLayer().identifier if stage else ''
 
@@ -184,6 +205,14 @@ class LoadingManager:
                 return
 
         asyncio.ensure_future(open_stage())
+
+    @staticmethod
+    def _allowed_stage_roots() -> list:
+        roots = carb.settings.get_settings().get(ALLOWED_STAGE_ROOTS_SETTING) or []
+        if isinstance(roots, str):
+            roots = [roots]
+        tokens = carb.tokens.get_tokens_interface()
+        return [tokens.resolve(root) for root in roots if root]
 
     def _on_stage_event_opening(self, event) -> None:
         """Manage extension state via the stage event stream.

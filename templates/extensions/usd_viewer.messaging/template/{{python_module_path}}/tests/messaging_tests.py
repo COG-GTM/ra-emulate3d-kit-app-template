@@ -12,11 +12,15 @@ from pathlib import Path
 from typing import Dict, List
 
 import carb.events
+import carb.settings
 import carb.tokens
 import omni.kit.app
+import omni.usd
 from carb.eventdispatcher import get_eventdispatcher, Event
 from omni.kit.test import AsyncTestCase
 
+from ..stage_loading import ALLOWED_STAGE_ROOTS_SETTING
+from ..stage_url_policy import is_stage_url_allowed
 
 
 async def wait_stage_loading(wait_frames: int = 2, usd_context=None, timeout=1000, timeout_error=True):
@@ -64,6 +68,64 @@ class MessagingTest(AsyncTestCase):
         extension = "{{ extension_name }}"
         ext_root = Path(carb.tokens.get_tokens_interface().resolve({% raw %}f"${{{extension}}}"{% endraw %}))
         self._data_path = ext_root / "data"
+
+        # Allow the test data directory as a stage location for the duration of the test
+        self._settings = carb.settings.get_settings()
+        self._saved_roots = list(self._settings.get(ALLOWED_STAGE_ROOTS_SETTING) or [])
+        self._settings.set_string_array(
+            ALLOWED_STAGE_ROOTS_SETTING, self._saved_roots + [self._data_path.as_posix()]
+        )
+
+    async def tearDown(self):
+        self._settings.set_string_array(ALLOWED_STAGE_ROOTS_SETTING, self._saved_roots)
+
+    async def test_stage_url_policy(self):
+        data = self._data_path.as_posix()
+        roots = [data, "omniverse://nucleus.example.com/Projects/Viewer"]
+
+        self.assertTrue(is_stage_url_allowed(f"{data}/testing.usd", roots))
+        self.assertTrue(is_stage_url_allowed("omniverse://Nucleus.example.com/Projects/Viewer/a.usd", roots))
+
+        self.assertFalse(is_stage_url_allowed("https://attacker.example.com/payload.usda", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://other.example.com/Projects/Viewer/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/ViewerX/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/../Other/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/%2e%2e/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed(f"{data}/../../outside.usda", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/a.usd?b=1", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/a.usd#x", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://[bad/Projects/Viewer/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/a.usd", ["omniverse://[bad/"]))
+        self.assertFalse(is_stage_url_allowed(f"{data}/testing.usd", []))
+        self.assertFalse(is_stage_url_allowed(f"{data}/testing.usd", ["", "${unresolved.token}"]))
+
+    async def test_open_stage_request_rejects_disallowed_url(self):
+        """
+        A client must not be able to open a stage outside the allowed roots
+        """
+        results: List[dict] = []
+        subscription = self._ed.observe_event(
+            observer_name="MessagingTest:openedStageResult",
+            event_name="openedStageResult",
+            on_event=lambda event: results.append(dict(event.payload)),
+        )
+        stage_before = omni.usd.get_context().get_stage_url()
+
+        rejected = [
+            "https://attacker.example.com/payload.usda",
+            "omniverse://attacker.example.com/payload.usda",
+            (self._data_path / ".." / ".." / "outside.usda").as_posix(),
+        ]
+        for url in rejected:
+            self._ed.dispatch_event("openStageRequest", payload={"url": url})
+            await self._app.next_update_async()
+
+        await wait_stage_loading(wait_frames=10)
+        del subscription
+
+        self.assertEqual([r["url"] for r in results], rejected)
+        self.assertTrue(all(r["result"] == "error" for r in results))
+        self.assertEqual(omni.usd.get_context().get_stage_url(), stage_before)
 
     async def test_stage_loading_incoming(self):
         """

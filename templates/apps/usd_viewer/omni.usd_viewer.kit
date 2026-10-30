@@ -20,7 +20,6 @@ template_name = "omni.usd_viewer"
 "omni.anim.timeline" = {}
 "omni.graph.action" = {}
 "omni.graph.nodes" = {}
-"omni.graph.scriptnode" = {}
 "omni.graph.ui_nodes" = {}
 "omni.hydra.rtx" = {}
 "omni.hydra.usdrt_delegate" = {}
@@ -95,7 +94,7 @@ size = 16
 name = "default"
 
 [settings.app."omni.graph.scriptnode"]
-opt_in = true
+opt_in = false  # Never run Python from Script Nodes in a loaded stage without asking
 
 [settings.app.window]
 title = "{{ application_display_name }}"
