@@ -131,6 +131,8 @@ Applications and their associated extensions can be tested using the `repo test`
 
 #### Enable Extension
 
+- Launch the application with the Developer Bundle (`./repo.sh launch --dev-bundle` or `.\repo.bat launch --dev-bundle`). The USD Explorer template does not ship `omni.kit.developer.bundle` or the Python `Console` window, so they are not available in packaged or streamed builds.
+
 - From the running application select `Developer` > `Extensions`
 
 - Browse and enable extensions of interest from the Extension Manager.

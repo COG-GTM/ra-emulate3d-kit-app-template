@@ -29,7 +29,7 @@ repository = "https://github.com/NVIDIA-Omniverse/kit-app-template"  # URL of th
 "omni.kit.stage_templates" = {}
 "omni.kit.widgets.custom" = {}
 "omni.kit.widget.layers" = { optional=true }
-"omni.kit.window.console" = {}
+"omni.kit.window.console" = { optional=true }  # Not shipped; available with `repo launch --dev-bundle`
 "omni.kit.window.content_browser" = {}
 "omni.kit.window.file" = {}
 "omni.kit.window.material" = {}

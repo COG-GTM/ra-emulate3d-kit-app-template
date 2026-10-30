@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Security
+
+- USD Explorer template no longer ships `omni.kit.developer.bundle` or `omni.kit.window.console` (Python command line); use `repo launch --dev-bundle` during development
+- Streaming layers now use the documented `app.extensions.excluded` key (previously `exclude`, which Kit ignores) and also exclude `omni.kit.window.console`, `omni.kit.window.script_editor` and `omni.kit.debug.vscode`
+
 ## [110.1.2] - 2026-07-06
 
 ### Fixed
