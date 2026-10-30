@@ -12,9 +12,11 @@ from pathlib import Path
 from typing import Dict, List
 
 import carb.events
+import carb.settings
 import carb.tokens
 import omni.kit.app
 from carb.eventdispatcher import get_eventdispatcher, Event
+import omni.usd
 from omni.kit.test import AsyncTestCase
 
 
@@ -64,6 +66,58 @@ class MessagingTest(AsyncTestCase):
         extension = "{{ extension_name }}"
         ext_root = Path(carb.tokens.get_tokens_interface().resolve({% raw %}f"${{{extension}}}"{% endraw %}))
         self._data_path = ext_root / "data"
+
+        # Allow the extension's own test data, mirroring a deployment that
+        # configures its content directory as an allowed stage root.
+        self._settings = carb.settings.get_settings()
+        self._allowed_roots_setting = "/exts/{{ extension_name }}/allowedStageRoots"
+        self._previous_allowed_roots = self._settings.get(self._allowed_roots_setting)
+        self._settings.set_string_array(self._allowed_roots_setting, [self._data_path.as_posix()])
+
+    async def tearDown(self):
+        self._settings.set_string_array(self._allowed_roots_setting, list(self._previous_allowed_roots or []))
+
+    async def test_open_stage_rejects_locations_outside_allowed_roots(self):
+        """
+        openStageRequest must refuse remote URLs, local paths and token or
+        traversal tricks outside the allowed roots, without opening them.
+        """
+        results: List[dict] = []
+
+        def on_result(event: Event) -> None:
+            results.append(dict(event.payload))
+
+        subscription = self._ed.observe_event(
+            observer_name="MessagingTest:openedStageResult",
+            event_name="openedStageResult",
+            on_event=on_result,
+        )
+        context = omni.usd.get_context()
+        await context.new_stage_async()
+        stage_before = context.get_stage_url()
+
+        rejected = [
+            "https://example.com/x.usda",
+            "/etc/hostname",
+            "${app}/../x.usd",
+            "./x.usd",
+            (self._data_path / ".." / "config" / "extension.toml").as_posix(),
+            "file://" + (self._data_path / "testing.usd").as_posix(),
+            "./samples/../../x.usd",
+        ]
+        for url in rejected:
+            results.clear()
+            self._ed.dispatch_event("openStageRequest", payload={"url": url})
+            await self._app.next_update_async()
+            await self._app.next_update_async()
+            self.assertEqual(
+                results,
+                [{"url": url, "result": "error", "error": "Requested stage location is not permitted"}],
+                url,
+            )
+            self.assertEqual(context.get_stage_url(), stage_before, url)
+
+        del subscription
 
     async def test_stage_loading_incoming(self):
         """

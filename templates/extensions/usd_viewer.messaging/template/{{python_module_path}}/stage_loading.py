@@ -10,9 +10,13 @@
 
 import asyncio
 import os
+import re
+from typing import Iterable, Optional
+from urllib.parse import unquote
 
 import carb
 import carb.events
+import carb.settings
 import carb.tokens
 from carb.eventdispatcher import get_eventdispatcher
 
@@ -20,6 +24,104 @@ import omni.client
 import omni.kit.app
 import omni.kit.livestream.messaging as messaging
 import omni.usd
+
+
+SAMPLES_REQUEST_PREFIXES = ("./samples/", ".\\samples\\")
+SAMPLES_ROOT_TOKEN = "${omni.usd_viewer.samples}"
+ALLOWED_STAGE_ROOTS_SETTING = "/exts/{{ extension_name }}/allowedStageRoots"
+STAGE_REQUEST_REJECTED = "Requested stage location is not permitted"
+
+_SCHEME_URL = re.compile(r"^([A-Za-z][A-Za-z0-9+.-]+)://([^/]*)(/.*)?$")
+_DRIVE_PATH = re.compile(r"^[A-Za-z]:/")
+
+
+def _split_location(location: str):
+    """Split a location into (scheme, host, path) using forward slashes.
+
+    Local paths get an empty scheme and host. Single-letter schemes are
+    treated as Windows drive letters, not URL schemes.
+    """
+    location = location.replace("\\", "/")
+    match = _SCHEME_URL.match(location)
+    if match:
+        return match.group(1).lower(), match.group(2).lower(), match.group(3) or "/"
+    return "", "", location
+
+
+def _has_unsafe_segments(location: str) -> bool:
+    """True if the location contains traversal, token or control sequences."""
+    for candidate in (location, unquote(location)):
+        if "${" in candidate or any(ord(c) < 0x20 for c in candidate):
+            return True
+        segments = candidate.replace("\\", "/").split("/")
+        if any(segment in (".", "..") for segment in segments):
+            return True
+    return False
+
+
+def _is_absolute_local(path: str) -> bool:
+    return path.startswith("/") or bool(_DRIVE_PATH.match(path))
+
+
+def _fold_drive_case(path: str) -> str:
+    return path.lower() if _DRIVE_PATH.match(path) else path
+
+
+def _normalize_local(path: str) -> str:
+    return _fold_drive_case(os.path.realpath(path).replace("\\", "/"))
+
+
+def _is_within(path: str, root: str) -> bool:
+    root = root.rstrip("/")
+    return path == root or path.startswith(root + "/")
+
+
+def resolve_stage_request(url, samples_root: str, allowed_roots: Iterable[str]) -> Optional[str]:
+    """Map a client `openStageRequest` url to the location to open.
+
+    Returns "" for a new empty stage, the location to open when the request
+    is permitted, or None when it must be rejected. Permitted requests are
+    `./samples/<path>` (resolved inside the samples extension) and locations
+    inside one of `allowed_roots` (server-configured, already token-resolved,
+    compared by scheme, host and path prefix). The client string is never
+    passed through the carb token resolver.
+    """
+    if not isinstance(url, str):
+        return None
+    if url == "":
+        return ""
+
+    if url.startswith(SAMPLES_REQUEST_PREFIXES):
+        relative = url[len(SAMPLES_REQUEST_PREFIXES[0]):].replace("\\", "/")
+        if not relative or _has_unsafe_segments(relative) or not samples_root:
+            return None
+        return samples_root.rstrip("/\\") + "/samples_data/" + relative
+
+    if _has_unsafe_segments(url):
+        return None
+
+    scheme, host, path = _split_location(url)
+    if not scheme and not _is_absolute_local(path):
+        return None
+
+    for root in allowed_roots:
+        if not isinstance(root, str) or not root or "${" in root:
+            continue
+        root_scheme, root_host, root_path = _split_location(root)
+        if (scheme, host) != (root_scheme, root_host):
+            continue
+        if not scheme:
+            if not _is_absolute_local(root_path):
+                continue
+            lexical_root = _fold_drive_case(os.path.normpath(root_path).replace("\\", "/"))
+            if not _is_within(_fold_drive_case(path), lexical_root):
+                continue
+            if _is_within(_normalize_local(path), _normalize_local(root_path)):
+                return url
+            continue
+        if not _has_unsafe_segments(root_path) and _is_within(path, root_path):
+            return url
+    return None
 
 
 class LoadingManager:
@@ -117,6 +219,19 @@ class LoadingManager:
         get_eventdispatcher().dispatch_event("loadingStateResponse", payload=payload)
 
 
+    @staticmethod
+    def _stage_roots():
+        """Server-side roots that `openStageRequest` may load from."""
+        tokens = carb.tokens.acquire_tokens_interface()
+        samples_root = tokens.resolve(SAMPLES_ROOT_TOKEN)
+        if samples_root == SAMPLES_ROOT_TOKEN:
+            samples_root = ""
+        configured = carb.settings.get_settings().get(ALLOWED_STAGE_ROOTS_SETTING) or []
+        if isinstance(configured, str):
+            configured = [configured]
+        allowed_roots = [tokens.resolve(root) for root in configured if isinstance(root, str) and root]
+        return samples_root, allowed_roots
+
     def _on_open_stage(self, event: carb.events.IEvent) -> None:
         """
         Handler for `openStageRequest` event.
@@ -130,31 +245,20 @@ class LoadingManager:
                 f"Unexpected message payload: missing \"url\" key. Payload: '{event.payload}'")
             return
 
-        self._requested_stage_url = event.payload["url"]
+        requested_url = event.payload["url"]
+        url = resolve_stage_request(requested_url, *self._stage_roots())
+        if url is None:
+            carb.log_warn(f"Rejected openStageRequest outside the allowed stage roots: {requested_url!r}")
+            payload = {"url": requested_url, "result": "error", "error": STAGE_REQUEST_REJECTED}
+            get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
+            return
+
+        self._requested_stage_url = requested_url
         carb.log_info(
             f"Received message to load '{self._requested_stage_url}'"
         )
 
-        def process_url(url):
-            # Using a single leading `.` to signify that the path is relative to the ${app} token's parent directory
-            # Because we've moved the samples out of the app directory, we need to check for that here
-            # in the samples extension directory.
-            # If that doesn't exist (using older version of the extension), we fall back to old behavior.
-            if url.startswith(("./", ".\\")):
-                if url.startswith(("./samples", ".\\samples")):
-                    sample_url = carb.tokens.acquire_tokens_interface().resolve(
-                        "${omni.usd_viewer.samples}/" + url[1:].replace("samples", "samples_data")
-                    )
-                    if os.path.exists(sample_url):
-                        return sample_url
-                return carb.tokens.acquire_tokens_interface().resolve(
-                    "${app}/.." + url[1:]
-                )
-            return carb.tokens.acquire_tokens_interface().resolve(url)
-
         # Check to see if we've already loaded the current stage.
-        url = process_url(self._requested_stage_url)
-
         stage = omni.usd.get_context().get_stage()
         current_stage = stage.GetRootLayer().identifier if stage else ''
 
@@ -178,7 +282,7 @@ class LoadingManager:
             if result is not True:
                 # Send message to client that loading failed.
                 carb.log_warn(f'The file that the client requested failed to load: {url} (error: {error})')
-                payload = {"url": url, "result": "error", "error": error}
+                payload = {"url": self._requested_stage_url, "result": "error", "error": error}
                 get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
                 self._reset_state()
                 return

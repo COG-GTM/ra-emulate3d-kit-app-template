@@ -290,6 +290,16 @@ Follow the [Quick Start instructions in the web-viewer-sample README](https://gi
 
 ![Streaming Viewer Image](../../../readme-assets/streaming_viewer.png)
 
+#### Choosing Which Stages Clients Can Open
+Anyone connected to the stream can send an `openStageRequest` message. The messaging extension only opens `./samples/...` (from `omni.usd_viewer.samples`) and locations inside the `allowedStageRoots` setting of the messaging extension; every other URL or path gets an `openedStageResult` error. To serve your own content, list its directory or server prefix, for example:
+
+```toml
+[settings.exts."my_company.my_usd_viewer_messaging_extension"]
+allowedStageRoots = ["omniverse://nucleus.example.com/Projects/Viewer", "${app}/../content"]
+```
+
+Only list trusted locations. Script nodes are opted out (`[settings.app."omni.graph.scriptnode"] opt_in = false`); keep them that way unless every allowed root is fully trusted, since a script node runs its Python on the streaming host.
+
 
 ## Additional Learning
 
