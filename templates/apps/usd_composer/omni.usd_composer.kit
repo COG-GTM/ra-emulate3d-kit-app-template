@@ -16,6 +16,10 @@ keywords = ["experience", "app", "usd"]  # That makes it browsable in UI with "e
 template_name = "omni.usd_composer"
 
 
+# Python execution tools (omni.kit.developer.bundle, which includes the Script
+# Editor, and omni.kit.window.console) are intentionally not dependencies so
+# they are never shipped or streamed. Enable them for local development with
+# `repo launch --dev-bundle` and `--enable omni.kit.window.console`.
 [dependencies]
 "omni.activity.ui" = {}
 "omni.activity.usd_resolver" = {}
@@ -50,7 +54,6 @@ template_name = "omni.usd_composer"
 "omni.kit.collaboration.telemetry" = {}
 "omni.kit.collaboration.viewport.camera" = {}
 "omni.kit.context_menu" = {}
-"omni.kit.developer.bundle" = {}
 "omni.kit.graph.delegate.default" = {}
 "omni.kit.hotkeys.window" = {}
 "omni.kit.manipulator.prim" = {}
@@ -112,7 +115,6 @@ template_name = "omni.usd_composer"
 "omni.kit.widgets.custom" = {}
 "omni.kit.window.about" = {}
 "omni.kit.window.collection" = {}
-"omni.kit.window.console" = {}
 "omni.kit.window.content_browser" = {}
 "omni.kit.window.cursor" = {}
 "omni.kit.window.environment" = {}
@@ -124,7 +126,6 @@ template_name = "omni.usd_composer"
 "omni.kit.window.preferences" = { order = 1000 } # so the menu is in the correct place
 "omni.kit.window.property" = {}
 "omni.kit.window.quicksearch" = {}
-"omni.kit.window.script_editor" = {}
 "omni.kit.window.stage" = {}
 "omni.kit.window.stats" = { order = 1000 }
 "omni.kit.window.status_bar" = {}

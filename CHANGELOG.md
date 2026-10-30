@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Security
+
+- Removed `omni.kit.developer.bundle`, `omni.kit.window.script_editor` and `omni.kit.window.console` from the USD Composer template; use `repo launch --dev-bundle` during development
+- Streaming configuration layers now also exclude `omni.kit.window.script_editor` and `omni.kit.window.console` (the USD Explorer setup extension's console dependency is now optional)
+
 ## [110.1.2] - 2026-07-06
 
 ### Fixed

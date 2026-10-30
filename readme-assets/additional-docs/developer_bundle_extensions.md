@@ -7,7 +7,7 @@ The Developer Bundle Extension (`omni.kit.developer.bundle`) provides a set of d
 ---
 
 ## Enabling the Developer Bundle
-Application templates within the Kit App Template repository have `omni.kit.developer.bundle` configured within the `.kit` file by default.  For applications that do not, the Developer Bundle can be added temporarily at launch time using the `--dev-bundle` or `-d` flag.
+Most application templates within the Kit App Template repository have `omni.kit.developer.bundle` configured within the `.kit` file by default. The USD Composer template does not, so that the Script Editor is never shipped or streamed with it. For applications that do not include it, the Developer Bundle can be added temporarily at launch time using the `--dev-bundle` or `-d` flag.
 
 **Linux**
 ```bash
@@ -20,6 +20,8 @@ Application templates within the Kit App Template repository have `omni.kit.deve
 ```
 
 The `launch` tool will prompt for a selection of a `.kit` file to launch. Select the desired UI based application. The developer bundle is not currently suitable for headless services.
+
+:warning: **Important**: The Script Editor and Console execute Python on the host. Do not ship them in applications that are streamed to users who are not trusted to run code. The streaming configuration layers (`templates/apps/streaming_configs/*.kit`) exclude `omni.kit.developer.bundle`, `omni.kit.window.script_editor` and `omni.kit.window.console`.
 
 ---
 

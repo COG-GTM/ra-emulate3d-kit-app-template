@@ -35,8 +35,10 @@ rtx.verifyDriverVersion.enabled = false
 registryEnabled = true
 supportedTargets.platform = []  # Skip checking supported platform/config when building
 
-exclude = [
+exclude = [  # Never stream tools that execute viewer-supplied Python on the host
     "omni.kit.developer.bundle",
+    "omni.kit.window.console",
+    "omni.kit.window.script_editor",
     "omni.kit.widget.cache_indicator",
 ]
 
