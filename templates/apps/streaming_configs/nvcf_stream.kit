@@ -45,9 +45,14 @@ rtx-transient.scenedb.instanceBudget=1000000
 registryEnabled = true
 supportedTargets.platform = []  # Skip checking supported platform/config when building
 
-exclude = [
+excluded = [
     "omni.kit.developer.bundle",
     "omni.kit.widget.cache_indicator",
+    # Remote viewers must not get a way to run Python on the streaming host.
+    "omni.kit.window.console",  # Python command line
+    "omni.kit.window.script_editor",  # Python script editor
+    "omni.kit.window.extensions",  # Extension manager (can enable the above)
+    "omni.graph.scriptnode",  # Runs Python embedded in USD files
 ]
 
 [settings.app.exts]

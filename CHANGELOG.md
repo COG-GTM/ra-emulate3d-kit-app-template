@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Security
+
+- Streaming layers (`default_stream.kit`, `nvcf_stream.kit`) and the generated `ra.emulate3d.web_streaming.kit` now exclude the Python console, script editor, extension manager and OmniGraph script nodes, so remote viewers cannot run Python on the streaming host. The default layer and the Emulate3D streaming app also exclude the content browser, asset importer and File menu.
+- Fixed the streaming layer templates to use the `excluded` key that Kit reads. Previously the `exclude` key was silently ignored.
+
 ## [110.1.2] - 2026-07-06
 
 ### Fixed

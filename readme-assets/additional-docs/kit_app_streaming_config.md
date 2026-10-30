@@ -50,6 +50,16 @@ After creating your application, you'll find two `.kit` files in the `/source/ap
 - `{app_name}.kit`: The main application configuration file.
 - `{app_name}_{streaming_config}.kit`: The streaming configuration file.
 
+### Streaming Security
+
+A streaming layer forwards the remote viewer's mouse and keyboard to the full application UI, and the livestream extensions have no login of their own. Anything the UI can do, a viewer can do on the streaming host.
+
+- **Python execution is excluded.** Both streaming layers add `omni.kit.window.console`, `omni.kit.window.script_editor`, `omni.kit.window.extensions` and `omni.graph.scriptnode` (Python embedded in USD files) to `app.extensions.excluded`, alongside `omni.kit.developer.bundle`. Do not remove these entries from a streamed `.kit` file.
+- **Host file access is excluded (default layer).** The Omniverse Kit App Streaming layer also excludes `omni.kit.window.content_browser`, `omni.kit.tool.asset_importer` and `omni.kit.menu.file` (File > Open / Save As / Import dialogs). Remove those entries only if viewers are trusted to browse, import and overwrite files on the host. Other editor widgets (for example asset-path pickers in the Property window) can still open a file dialog, so untrusted viewers need the authenticated front door below or a viewport-only app.
+- **Use the `excluded` key.** Kit reads `app.extensions.excluded`; an `exclude` key is silently ignored.
+- **Check the build.** After `./repo.sh build`, the generated version lock in `{app_name}_{streaming_config}.kit` must not list any excluded extension.
+- **Authenticate the endpoint.** Never expose the WebRTC signaling/media ports directly. Put the app behind an authenticating front door, such as the Omniverse Kit App Streaming session manager or an authenticated reverse proxy. For viewer-only deployments, prefer a streaming layer on top of the viewport-only [USD Viewer](../../templates/apps/usd_viewer/) template.
+
 ### Adding Layers to an Existing Application
 
 If you didn't add streaming layers during initial setup, or want to add additional layers later, use the `modify` command:
