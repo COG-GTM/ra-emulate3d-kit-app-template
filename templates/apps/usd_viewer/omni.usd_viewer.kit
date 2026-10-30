@@ -94,8 +94,10 @@ size = 16
 [settings.app.layout]  # this is a custom setting used in our app setup to choose the Layout
 name = "default"
 
+# Script nodes run embedded Python from any loaded scene. Keep them opted out
+# unless every stage this app can open comes from a trusted location.
 [settings.app."omni.graph.scriptnode"]
-opt_in = true
+opt_in = false
 
 [settings.app.window]
 title = "{{ application_display_name }}"

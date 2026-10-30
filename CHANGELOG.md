@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Security
+
+- USD Viewer messaging template: `openStageRequest` now only loads `./samples/...` or locations under the new `allowedStageRoots` extension setting, and no longer resolves `${...}` tokens or arbitrary `./` paths from the client
+- USD Viewer template: `omni.graph.scriptnode` is now opted out (`opt_in = false`) so scenes cannot run embedded Python without consent
+
 ## [110.1.2] - 2026-07-06
 
 ### Fixed
