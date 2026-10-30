@@ -42,6 +42,14 @@ registryEnabled = true
 supportedTargets.platform = []  # Skip checking supported platform/config when building
 excluded = [
     "omni.kit.developer.bundle",
+    # Remote viewers must not get a way to run Python on the streaming host.
+    "omni.kit.window.console",  # Python command line
+    "omni.kit.window.script_editor",  # Python script editor
+    "omni.kit.window.extensions",  # Extension manager (can enable the above)
+    "omni.graph.scriptnode",  # Runs Python embedded in USD files
+    # Remote viewers must not browse, import or modify files on the streaming host.
+    "omni.kit.window.content_browser",
+    "omni.kit.tool.asset_importer",
 ]
 
 [settings.app.exts]
@@ -108,12 +116,10 @@ enabled = [
 	"omni.graph.action_nodes_core-2.11.0",
 	"omni.graph.nodes-2.12.0",
 	"omni.graph.nodes_core-2.11.0",
-	"omni.graph.scriptnode-2.10.2",
 	"omni.graph.ui_nodes-2.11.1",
 	"omni.kit.asset_converter-6.0.1",
 	"omni.kit.livestream.core-10.3.0",
 	"omni.kit.livestream.webrtc-10.5.0",
-	"omni.kit.tool.asset_importer-6.0.1",
 	"omni.kit.viewport.menubar.lighting-107.3.2",
 	"omni.physx-110.1.1",
 	"omni.physx.cooking-110.1.1",
