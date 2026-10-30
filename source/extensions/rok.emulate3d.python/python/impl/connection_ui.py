@@ -6,10 +6,12 @@
 ## distribution of this software and related documentation without an express
 ## license agreement from NVIDIA CORPORATION is strictly prohibited.
 ##
+import carb
 import omni.ui as ui
 import omni.kit.ui
 import omni.usd
 import asyncio
+from .settings_parsing import url_is_https
 
 _STYLE_CONNECTION_ROW = {
     "Rectangle": {"background_color": 0x00000000},
@@ -130,7 +132,7 @@ class ConnectionUI:
             self._window.visible = True
 
     def _url_is_https(self, url: str) -> bool:
-        return url.strip().lower().startswith("https://")
+        return url_is_https(url)
 
     def _url_has_protocol(self, url: str) -> bool:
         lowered = url.strip().lower()
@@ -164,6 +166,7 @@ class ConnectionUI:
         self._add_server_connection(name, url, trust_self_signed)
 
     def _add_server_connection(self, name: str, url: str, trust_self_signed: bool = False, closeOnSuccess=False):
+        trust_self_signed = trust_self_signed is True and self._url_is_https(url)
         self._url_field.model.set_value(url)
         self._name_field.model.set_value(name)
         self._trust_cert_checkbox.model.set_value(trust_self_signed)
@@ -174,6 +177,10 @@ class ConnectionUI:
         context = omni.usd.get_context()
         stage_id = context.get_stage_id()
 
+        if trust_self_signed:
+            carb.log_warn(f"[rok.emulate3d.python] TLS certificate verification is DISABLED for {url} (trust self-signed certificates).")
+        elif self._url_is_https(url):
+            print(f"[rok.emulate3d.python] TLS certificate verification is enabled for {url}.")
         print(f"[rok.emulate3d.python] Connecting to {url}...")
         if self._bound_interface.connect_client(name, stage_id, url, trust_self_signed):
             print(f"[rok.emulate3d.python] Connected to {url} successfully.")
