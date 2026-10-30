@@ -40,8 +40,12 @@ rtx-transient.dlssg.enabled = false  # Disable DLSS otherwise it can push the fr
 [settings.app.extensions]
 registryEnabled = true
 supportedTargets.platform = []  # Skip checking supported platform/config when building
-excluded = [
+excluded = [  # Remote viewers get keyboard/mouse control; drop UI that runs Python or browses the host.
     "omni.kit.developer.bundle",
+    "omni.kit.window.console",  # Console command line executes Python
+    "omni.graph.scriptnode",  # Runs Python embedded in opened USD stages
+    "omni.kit.window.content_browser",  # Browses the host's local drives
+    "omni.kit.tool.asset_importer",  # Imports arbitrary files from the host
 ]
 
 [settings.app.exts]
@@ -53,6 +57,13 @@ folders.'++' = [  # Search paths for extensions.
 
 [settings.app.file]
 ignoreUnsavedOnExit = true
+
+[settings.exts."omni.kit.window.filepicker"]
+show_only_collections = ["bookmarks", "omniverse", "s3", "azure", "custom"]  # Hide local drives from remote viewers
+show_add_new_connection = false  # Do not let remote viewers add new server connections
+
+[settings.exts."omni.kit.window.content_browser"]
+show_only_collections = ["bookmarks", "omniverse", "s3", "azure", "custom"]  # Hide local drives if the content browser is re-enabled
 
 [settings.app.livestream]
 skipCapture = 1  # livestream skipCapture ON for local streaming
@@ -108,12 +119,10 @@ enabled = [
 	"omni.graph.action_nodes_core-2.11.0",
 	"omni.graph.nodes-2.12.0",
 	"omni.graph.nodes_core-2.11.0",
-	"omni.graph.scriptnode-2.10.2",
 	"omni.graph.ui_nodes-2.11.1",
 	"omni.kit.asset_converter-6.0.1",
 	"omni.kit.livestream.core-10.3.0",
 	"omni.kit.livestream.webrtc-10.5.0",
-	"omni.kit.tool.asset_importer-6.0.1",
 	"omni.kit.viewport.menubar.lighting-107.3.2",
 	"omni.physx-110.1.1",
 	"omni.physx.cooking-110.1.1",
