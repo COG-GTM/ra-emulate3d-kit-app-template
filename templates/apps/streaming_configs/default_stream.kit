@@ -35,9 +35,18 @@ rtx.verifyDriverVersion.enabled = false
 registryEnabled = true
 supportedTargets.platform = []  # Skip checking supported platform/config when building
 
-exclude = [
+# Developer and Python-executing UI must never ship in a streamed build: a stream
+# viewer could otherwise run arbitrary Python on the host. Use `repo launch -d`
+# (--dev-bundle) on a non-streaming app during development instead.
+excluded = [
+    "omni.kit.debug.settings",
+    "omni.kit.debug.vscode",
     "omni.kit.developer.bundle",
     "omni.kit.widget.cache_indicator",
+    "omni.kit.window.commands",
+    "omni.kit.window.console",
+    "omni.kit.window.extensions",
+    "omni.kit.window.script_editor",
 ]
 
 [settings.app.exts]

@@ -3,6 +3,13 @@
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 
+## [Unreleased]
+
+### Security
+
+- Streaming layers (`default_stream.kit`, `nvcf_stream.kit`, `ra.emulate3d.web_streaming.kit`) now use Kit's `excluded` key (the templates used `exclude`, which Kit does not read) and also exclude `omni.kit.window.console`, `omni.kit.window.script_editor`, `omni.kit.window.extensions`, `omni.kit.window.commands`, `omni.kit.debug.settings` and `omni.kit.debug.vscode`, so stream viewers cannot run Python on the host
+- `omni.kit.window.console` is now an optional dependency of the USD Explorer setup extension so the streaming exclusion does not break dependency resolution
+
 ## [110.1.2] - 2026-07-06
 
 ### Fixed
