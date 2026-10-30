@@ -6,7 +6,9 @@ This is an example of pure python Kit extension. It is intended to be copied and
 
 `openStageRequest` only opens stages located under one of the roots listed in the
 `/exts/<extension_name>/allowedStageRoots` setting (by default the USD Viewer samples).
-Requests for any other URL are rejected with an `openedStageResult` error. Add your own
+Requests for any other URL, or remote URLs with a query or fragment, are rejected with an
+`openedStageResult` error. Every stage under a root is trusted, so only list locations that
+untrusted users cannot write to. Add your own
 trusted directories or Nucleus folders in the app `.kit` file, for example:
 
 ```toml

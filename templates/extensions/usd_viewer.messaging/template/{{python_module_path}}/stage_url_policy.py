@@ -22,13 +22,18 @@ def _normalize(url: str) -> Optional[_Location]:
     if not url or "${" in url or "\x00" in url:
         return None
 
-    parts = urlsplit(url.replace("\\", "/"))
-    scheme = parts.scheme.lower()
+    try:
+        parts = urlsplit(url.replace("\\", "/"))
+        scheme = parts.scheme.lower()
+        netloc = parts.netloc.lower()
+        parts.port  # raises ValueError on a malformed port
+    except ValueError:
+        return None
 
     # No scheme, a Windows drive letter ("c:/..."), or file: is a local path.
     if not scheme or len(scheme) == 1 or scheme == "file":
         if scheme == "file":
-            if parts.netloc not in ("", "localhost"):
+            if netloc not in ("", "localhost") or parts.query or parts.fragment:
                 return None
             path = unquote(parts.path)
             if len(path) > 2 and path[0] == "/" and path[2] == ":":
@@ -37,13 +42,14 @@ def _normalize(url: str) -> Optional[_Location]:
             path = url
         return "", "", os.path.normcase(os.path.realpath(path))
 
-    if not parts.netloc:
+    # Queries and fragments could select a different resource than the checked path.
+    if not netloc or parts.query or parts.fragment or "?" in url or "#" in url:
         return None
     path = unquote(parts.path).replace("\\", "/")
     if any(segment in (".", "..") for segment in path.split("/")):
         return None
     path = posixpath.normpath("/" + path.lstrip("/"))
-    return scheme, parts.netloc.lower(), path
+    return scheme, netloc, path
 
 
 def _is_within(root: str, path: str, local: bool) -> bool:
@@ -60,7 +66,8 @@ def is_stage_url_allowed(url: str, allowed_roots: Iterable[str]) -> bool:
 
     Roots and URLs must already have Kit tokens resolved. Remote roots match on
     scheme, host and path prefix; local roots match on the real (symlink-resolved) path.
-    Empty or unresolved roots never match.
+    Empty or unresolved roots never match. Every file under a root is trusted, so
+    roots must not be writable by untrusted users.
     """
     target = _normalize(url)
     if target is None:

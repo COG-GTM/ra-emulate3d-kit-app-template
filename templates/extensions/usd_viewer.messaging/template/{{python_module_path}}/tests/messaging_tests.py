@@ -92,6 +92,10 @@ class MessagingTest(AsyncTestCase):
         self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/../Other/a.usd", roots))
         self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/%2e%2e/a.usd", roots))
         self.assertFalse(is_stage_url_allowed(f"{data}/../../outside.usda", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/a.usd?b=1", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/Projects/Viewer/a.usd#x", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://[bad/Projects/Viewer/a.usd", roots))
+        self.assertFalse(is_stage_url_allowed("omniverse://nucleus.example.com/a.usd", ["omniverse://[bad/"]))
         self.assertFalse(is_stage_url_allowed(f"{data}/testing.usd", []))
         self.assertFalse(is_stage_url_allowed(f"{data}/testing.usd", ["", "${unresolved.token}"]))
 
