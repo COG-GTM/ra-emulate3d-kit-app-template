@@ -211,22 +211,38 @@ main() {
         rm "$TARGET" || return 1
     fi
 
-    # Generate temporary file name for environment variables:
-    PM_VAR_PATH=`mktemp -u -t tmp.$$.pmvars.XXXXXX`
-
+    # Create the environment variable file atomically (mode 0600, owned by us)
+    # before its name is exposed on the packman command line:
+    PM_VAR_PATH=""
+    PM_VAR_PATH_ARG=""
     if [ $# -ne 0 ]; then
+        PM_VAR_PATH=`mktemp -t tmp.$$.pmvars.XXXXXX` || return 1
         PM_VAR_PATH_ARG=--var-path="$PM_VAR_PATH"
-    else
-        PM_VAR_PATH_ARG=""
     fi
 
     "$PM_PYTHON" -S -s -u -E "$PM_MODULE" "$@" ${PM_VAR_PATH_ARG:-} || return 1
     # Export the variables if the file was used:
-    if [ -f "$PM_VAR_PATH" ]; then
+    if [ -n "$PM_VAR_PATH" ] && [ -f "$PM_VAR_PATH" ]; then
+        if [ -L "$PM_VAR_PATH" ] || [ ! -O "$PM_VAR_PATH" ]; then
+            echo "Refusing to read packman variable file not owned by $(id -un): $PM_VAR_PATH" >&2
+            return 1
+        fi
         while read -r line
         do
             if [ ${#line} -gt 0 ]; then
-                export "$line"
+                local name="${line%%=*}"
+                case "$name" in
+                    PM_PYTHON|PM_PYTHON_EXT|PM_MODULE|PM_MODULE_DIR|PM_MODULE_DIR_EXT|PM_INSTALL_PATH|PM_PACKAGES_ROOT|PM_PACKMAN_VERSION|PM_VAR_PATH|PM_VAR_PATH_ARG)
+                        echo "Ignoring reserved packman variable from $PM_VAR_PATH: $name" >&2
+                        ;;
+                    *)
+                        if [[ "$line" == *=* && "$name" =~ ^PM_[A-Za-z0-9_]+$ ]]; then
+                            export "$line"
+                        else
+                            echo "Ignoring unexpected line in $PM_VAR_PATH: $name" >&2
+                        fi
+                        ;;
+                esac
             fi
         done < "$PM_VAR_PATH"
     fi
