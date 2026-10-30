@@ -23,13 +23,17 @@ repository = "https://github.com/NVIDIA-Omniverse/kit-app-template"  # URL of th
 
 
 [dependencies]
-"omni.kit.commands" = {}
 "omni.services.core" = {}
 "omni.services.transport.server.http" = {}
 "omni.usd" = {}
 
 
 [settings]
+# Generated assets are only ever written directly inside this directory.
+exts."{{ extension_name }}".output_dir = "${data}/{{ extension_name }}/generated"
+# When empty, /generate_cube only accepts requests from loopback clients.
+# Set it (e.g. --/exts/{{ extension_name }}/api_key=...) to require an X-API-Key header instead.
+exts."{{ extension_name }}".api_key = ""
 
 
 [[python.module]]  # Main python module this extension provides, it will be publicly available as "import {{python_module}}"
