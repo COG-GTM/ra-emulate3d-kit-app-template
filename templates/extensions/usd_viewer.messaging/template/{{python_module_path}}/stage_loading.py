@@ -21,6 +21,8 @@ import omni.kit.app
 import omni.kit.livestream.messaging as messaging
 import omni.usd
 
+STAGE_LOAD_FAILED_ERROR = "Failed to load stage"
+
 
 class LoadingManager:
     """Manages the loading of USD stages and sends messages to the client"""
@@ -31,6 +33,9 @@ class LoadingManager:
         # URL of stage load request. Can be used in messaging with client.
         self._requested_stage_url: str = ""
         self._stage_is_opening: bool = False
+        # Client's original URL string for the currently open stage. Empty
+        # if the stage was not opened by a client request.
+        self._client_stage_url: str = ""
 
         # URL of loaded stage. Should not be used in messaging with client
         # because it may reveal directory paths in environment where
@@ -108,7 +113,7 @@ class LoadingManager:
         )
 
     def _on_load_state_query(self, event: carb.events.IEvent) -> None:
-        payload = {"loading_state": "idle", "url": self._opened_stage_url}
+        payload = {"loading_state": "idle", "url": self._client_stage_url}
         if self._stage_is_opening:
             payload = { "loading_state": "busy", "url": self._requested_stage_url }
         elif self._stage_has_opened:
@@ -163,8 +168,11 @@ class LoadingManager:
             carb.log_info(f'Client requested to open a stage that is already open: {url}')
             payload = {"url": self._requested_stage_url, "result": "success", "error": ''}
             get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
+            self._client_stage_url = self._requested_stage_url
             self._reset_state()
             return
+
+        requested_url = self._requested_stage_url
 
         # Asynchronously load the incoming stage
         async def open_stage():
@@ -176,9 +184,11 @@ class LoadingManager:
                 result, error = await usd_context.new_stage_async()
 
             if result is not True:
-                # Send message to client that loading failed.
+                # Send message to client that loading failed. The resolved
+                # URL and loader error may reveal server paths, so they are
+                # only logged.
                 carb.log_warn(f'The file that the client requested failed to load: {url} (error: {error})')
-                payload = {"url": url, "result": "error", "error": error}
+                payload = {"url": requested_url, "result": "error", "error": STAGE_LOAD_FAILED_ERROR}
                 get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
                 self._reset_state()
                 return
@@ -194,6 +204,7 @@ class LoadingManager:
             event (carb.events.IEvent): Event type
         """
         self._stage_is_opening = True
+        self._client_stage_url = ""
         payload: dict = dict(event.payload)
         if 'val' in payload.keys():
             self._opened_stage_url = payload['val']
@@ -257,6 +268,7 @@ class LoadingManager:
         )
         payload = {"url": url, "result": "success", "error": ''}
         get_eventdispatcher().dispatch_event("openedStageResult", payload=payload)
+        self._client_stage_url = self._requested_stage_url
 
         # reset
         self._is_evaluating_loading_status = False

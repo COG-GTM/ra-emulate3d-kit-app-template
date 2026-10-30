@@ -14,6 +14,7 @@ from typing import Dict, List
 import carb.events
 import carb.tokens
 import omni.kit.app
+import omni.usd
 from carb.eventdispatcher import get_eventdispatcher, Event
 from omni.kit.test import AsyncTestCase
 
@@ -162,3 +163,52 @@ class MessagingTest(AsyncTestCase):
         await self._app.next_update_async()
 
         self.assertTrue(all(outgoing.values()))
+
+    def _collect(self, event_name: str, results: List[dict]):
+        return self._ed.observe_event(
+            observer_name=f"MessagingTest:{event_name}",
+            event_name=event_name,
+            on_event=lambda e: results.append(dict(e.payload)),
+        )
+
+    async def test_stage_load_error_does_not_reveal_server_paths(self):
+        """
+        A failed openStageRequest must echo only the client's string, not the resolved path or loader error
+        """
+        results: List[dict] = []
+        subscription = self._collect("openedStageResult", results)
+
+        requested = "${app}/missing_stage_for_messaging_test.usd"
+        resolved = carb.tokens.get_tokens_interface().resolve(requested)
+        self._ed.dispatch_event("openStageRequest", payload={"url": requested})
+
+        for _ in range(300):
+            if results:
+                break
+            await self._app.next_update_async()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["result"], "error")
+        self.assertEqual(results[0]["url"], requested)
+        self.assertEqual(results[0]["error"], "Failed to load stage")
+        self.assertNotIn(resolved, str(results[0]))
+        del subscription
+
+    async def test_loading_state_query_does_not_reveal_server_paths(self):
+        """
+        loadingStateQuery must not return the root layer identifier of a stage the client did not request
+        """
+        results: List[dict] = []
+        subscription = self._collect("loadingStateResponse", results)
+
+        url = (self._data_path / "testing.usd").as_posix()
+        await omni.usd.get_context().open_stage_async(url)
+        await wait_stage_loading(wait_frames=30)
+
+        self._ed.dispatch_event("loadingStateQuery", payload={})
+        await self._app.next_update_async()
+
+        self.assertTrue(results)
+        self.assertEqual(results[-1]["loading_state"], "idle")
+        self.assertEqual(results[-1]["url"], "")
+        del subscription
