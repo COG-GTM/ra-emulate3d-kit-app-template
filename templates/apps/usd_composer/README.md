@@ -129,6 +129,8 @@ Applications and their associated extensions can be tested using the `repo test`
 
 #### Enable Extension
 
+- The Developer menu (Extension Manager, Script Editor) and the Console are not part of this template so they are never shipped or streamed. Launch with `./repo.sh launch --dev-bundle` (`.\repo.bat launch --dev-bundle` on Windows) to enable the developer bundle during development.
+
 - From the running application select `Developer` > `Extensions`
 
 - Browse and enable extensions of interest from the Extension Manager.
