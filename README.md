@@ -26,3 +26,7 @@ For example:
 ```
 .\rockwellautomation.emulate3d.omniverse.kit.bat --/ext/rok.emulate3d.python/url="localhost:9081" --/ext/rok.emulate3d.python/clientName="Client"
 ```
+
+To connect to an https server that uses a self-signed certificate, also pass `--/ext/rok.emulate3d.python/trustSelfSigned=true`.
+Only `true`, `1`, `yes` or `on` (case-insensitive) enable it; any other value, including `"false"` or `0`, keeps certificate verification on.
+The flag is ignored for non-https urls, and a warning is logged whenever certificate verification is disabled.

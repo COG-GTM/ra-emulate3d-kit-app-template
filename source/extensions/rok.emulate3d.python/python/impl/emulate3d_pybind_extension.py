@@ -12,6 +12,7 @@ import threading
 import carb.settings
 from .._rok_emulate3d_python_lib import *
 from .connection_ui import ConnectionUI
+from .settings_parsing import resolve_trust_self_signed
 
 # Global public interface object.
 _bound_interface = None
@@ -35,7 +36,7 @@ class Emulate3DPybindExtension(omni.ext.IExt):
         settings = carb.settings.get_settings()
         self.url = settings.get("/ext/rok.emulate3d.python/url")
         self.clientName = settings.get("/ext/rok.emulate3d.python/clientName")
-        self.trustSelfSigned = bool(settings.get("/ext/rok.emulate3d.python/trustSelfSigned"))
+        self.trustSelfSigned = resolve_trust_self_signed(self.url, settings.get("/ext/rok.emulate3d.python/trustSelfSigned"))
 
     def on_startup(self, _ext_id):
         self.update_rtx_settings()
