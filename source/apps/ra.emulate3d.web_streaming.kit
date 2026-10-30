@@ -43,6 +43,8 @@ supportedTargets.platform = []  # Skip checking supported platform/config when b
 excluded = [  # Remote viewers get keyboard/mouse control; drop UI that runs Python or browses the host.
     "omni.kit.developer.bundle",
     "omni.kit.window.console",  # Console command line executes Python
+    "omni.kit.window.script_editor",  # Python script editor
+    "omni.kit.window.extensions",  # Extension manager could re-enable any of these
     "omni.graph.scriptnode",  # Runs Python embedded in opened USD stages
     "omni.kit.window.content_browser",  # Browses the host's local drives
     "omni.kit.tool.asset_importer",  # Imports arbitrary files from the host

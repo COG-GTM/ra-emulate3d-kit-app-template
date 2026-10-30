@@ -21,7 +21,7 @@ The extension contains the code to connect to the world stage server, found in [
 - Select `ra.emulate3d.web.kit` to launch Omniverse with WebRTC capaibilities, or `rockwellautomation.emulate3d.omniverse.kit`to launch without
 
 ### Streaming security
-`ra.emulate3d.web_streaming.kit` streams the editor over WebRTC, and every connected viewer gets keyboard and mouse control of the app with the rights of the user who launched it. The streaming layer therefore excludes the Python console, script nodes (`omni.graph.scriptnode`), the content browser and the asset importer, and limits the file picker to bookmarks and remote servers so local drives cannot be browsed.
+`ra.emulate3d.web_streaming.kit` streams the editor over WebRTC, and every connected viewer gets keyboard and mouse control of the app with the rights of the user who launched it. The streaming layer therefore excludes the Python console, script editor, extension manager, script nodes (`omni.graph.scriptnode`), the content browser and the asset importer, and limits the file picker to bookmarks and remote servers so local drives cannot be browsed.
 
 The stream itself has no login. Only expose the WebRTC signaling and media ports to trusted viewers: keep them firewalled to the local machine or a trusted network, and put the stream behind an authenticated front end (for example the Kit App Streaming session manager or a reverse proxy with login) before publishing it more widely. If viewers only need to watch the simulation, prefer a viewport-only base app such as the [USD Viewer](templates/apps/usd_viewer) template.
 
