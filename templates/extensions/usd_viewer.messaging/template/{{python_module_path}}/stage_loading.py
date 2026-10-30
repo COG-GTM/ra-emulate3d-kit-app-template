@@ -48,9 +48,28 @@ def _split_location(location: str):
     return "", "", location
 
 
+_MAX_UNQUOTE_ROUNDS = 4
+
+
+def _decodings(location: str):
+    """The location plus each successive percent-decoding, or None if it
+    keeps changing after `_MAX_UNQUOTE_ROUNDS` (treated as unsafe)."""
+    decodings = [location]
+    for _ in range(_MAX_UNQUOTE_ROUNDS):
+        decoded = unquote(decodings[-1])
+        if decoded == decodings[-1]:
+            return decodings
+        decodings.append(decoded)
+    return None
+
+
 def _has_unsafe_segments(location: str) -> bool:
-    """True if the location contains traversal, token or control sequences."""
-    for candidate in (location, unquote(location)):
+    """True if the location, or any percent-decoding of it, contains
+    traversal, token or control sequences."""
+    candidates = _decodings(location)
+    if candidates is None:
+        return True
+    for candidate in candidates:
         if "${" in candidate or any(ord(c) < 0x20 for c in candidate):
             return True
         segments = candidate.replace("\\", "/").split("/")
@@ -76,6 +95,24 @@ def _is_within(path: str, root: str) -> bool:
     return path == root or path.startswith(root + "/")
 
 
+def _local_within(path: str, root: str) -> bool:
+    """Lexical then symlink-resolved containment of a local path in root."""
+    if not _is_absolute_local(path) or not _is_absolute_local(root):
+        return False
+    lexical_root = _fold_drive_case(os.path.normpath(root).replace("\\", "/"))
+    if not _is_within(_fold_drive_case(path), lexical_root):
+        return False
+    return _is_within(_normalize_local(path), _normalize_local(root))
+
+
+def _file_url_path(path: str) -> str:
+    """Local path of a file:// URL path ("/C:/x" -> "C:/x" on Windows)."""
+    path = unquote(path)
+    if len(path) > 2 and path[0] == "/" and _DRIVE_PATH.match(path[1:]):
+        return path[1:]
+    return path
+
+
 def resolve_stage_request(url, samples_root: str, allowed_roots: Iterable[str]) -> Optional[str]:
     """Map a client `openStageRequest` url to the location to open.
 
@@ -95,7 +132,11 @@ def resolve_stage_request(url, samples_root: str, allowed_roots: Iterable[str]) 
         relative = url[len(SAMPLES_REQUEST_PREFIXES[0]):].replace("\\", "/")
         if not relative or _has_unsafe_segments(relative) or not samples_root:
             return None
-        return samples_root.rstrip("/\\") + "/samples_data/" + relative
+        samples_data = samples_root.replace("\\", "/").rstrip("/") + "/samples_data"
+        candidate = samples_data + "/" + relative
+        if not _local_within(candidate, samples_data):
+            return None
+        return candidate
 
     if _has_unsafe_segments(url):
         return None
@@ -111,12 +152,11 @@ def resolve_stage_request(url, samples_root: str, allowed_roots: Iterable[str]) 
         if (scheme, host) != (root_scheme, root_host):
             continue
         if not scheme:
-            if not _is_absolute_local(root_path):
-                continue
-            lexical_root = _fold_drive_case(os.path.normpath(root_path).replace("\\", "/"))
-            if not _is_within(_fold_drive_case(path), lexical_root):
-                continue
-            if _is_within(_normalize_local(path), _normalize_local(root_path)):
+            if _local_within(path, root_path):
+                return url
+            continue
+        if scheme == "file":
+            if _local_within(_file_url_path(path), _file_url_path(root_path)):
                 return url
             continue
         if not _has_unsafe_segments(root_path) and _is_within(path, root_path):
