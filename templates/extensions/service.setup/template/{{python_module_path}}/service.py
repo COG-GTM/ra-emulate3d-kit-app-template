@@ -16,10 +16,10 @@ from pathlib import Path
 import carb.settings
 import carb.tokens
 from fastapi import Depends, HTTPException, Request
+from omni.services.core.routers import ServiceAPIRouter
 from pxr import Usd, UsdGeom
 from pydantic import BaseModel, Field
 from pydantic.version import VERSION as PYDANTIC_VERSION
-from omni.services.core.routers import ServiceAPIRouter
 
 SETTINGS_PREFIX = "/exts/{{ extension_name }}"
 DEFAULT_OUTPUT_DIR = "${data}/{{ extension_name }}/generated"
